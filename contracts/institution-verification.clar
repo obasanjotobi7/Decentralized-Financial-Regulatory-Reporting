@@ -1,30 +1,57 @@
+;; Institution Verification Contract
+;; Validates and registers financial entities
 
-;; title: institution-verification
-;; version:
-;; summary:
-;; description:
+(define-data-var admin principal tx-sender)
 
-;; traits
-;;
+;; Map of verified institutions
+(define-map verified-institutions
+  principal
+  {
+    name: (string-ascii 100),
+    verified: bool,
+    verification-date: uint
+  }
+)
 
-;; token definitions
-;;
+;; Register a new institution
+(define-public (register-institution (name (string-ascii 100)))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) (err u1))
+    (ok (map-set verified-institutions tx-sender
+      {
+        name: name,
+        verified: false,
+        verification-date: u0
+      }
+    ))
+  )
+)
 
-;; constants
-;;
+;; Verify an institution
+(define-public (verify-institution (institution principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get admin)) (err u1))
+    (asserts! (is-some (map-get? verified-institutions institution)) (err u2))
+    (ok (map-set verified-institutions institution
+      (merge (unwrap-panic (map-get? verified-institutions institution))
+        {
+          verified: true,
+          verification-date: block-height
+        }
+      )
+    ))
+  )
+)
 
-;; data vars
-;;
+;; Check if an institution is verified
+(define-read-only (is-verified (institution principal))
+  (match (map-get? verified-institutions institution)
+    institution-data (ok (get verified institution-data))
+    (err u3)
+  )
+)
 
-;; data maps
-;;
-
-;; public functions
-;;
-
-;; read only functions
-;;
-
-;; private functions
-;;
-
+;; Get institution details
+(define-read-only (get-institution-details (institution principal))
+  (map-get? verified-institutions institution)
+)
