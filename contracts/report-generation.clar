@@ -1,30 +1,49 @@
+;; Report Generation Contract
+;; Creates standardized documents
 
-;; title: report-generation
-;; version:
-;; summary:
-;; description:
+(define-data-var admin principal tx-sender)
 
-;; traits
-;;
+;; Map of generated reports
+(define-map reports
+  uint
+  {
+    institution: principal,
+    requirement-id: uint,
+    report-hash: (buff 32),
+    generation-time: uint
+  }
+)
 
-;; token definitions
-;;
+;; Counter for report IDs
+(define-data-var report-id-counter uint u0)
 
-;; constants
-;;
+;; Generate a report
+(define-public (generate-report
+                (institution principal)
+                (requirement-id uint)
+                (report-hash (buff 32)))
+  (let ((new-id (+ (var-get report-id-counter) u1)))
+    (begin
+      (asserts! (is-eq tx-sender (var-get admin)) (err u1))
+      (var-set report-id-counter new-id)
+      (ok (map-set reports new-id
+        {
+          institution: institution,
+          requirement-id: requirement-id,
+          report-hash: report-hash,
+          generation-time: block-height
+        }
+      ))
+    )
+  )
+)
 
-;; data vars
-;;
+;; Get report details
+(define-read-only (get-report (report-id uint))
+  (map-get? reports report-id)
+)
 
-;; data maps
-;;
-
-;; public functions
-;;
-
-;; read only functions
-;;
-
-;; private functions
-;;
-
+;; Get latest report ID
+(define-read-only (get-latest-report-id)
+  (var-get report-id-counter)
+)
